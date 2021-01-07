@@ -15,8 +15,8 @@ terraform {
 module "vault_cluster" {
   # When using these modules in your own templates, you will need to use a Git URL with a ref attribute that pins you
   # to a specific version of the modules, such as the following example:
-  # source = "github.com/hashicorp/terraform-aws-vault.git/modules/vault-cluster?ref=v0.0.1"
-  source = "../../modules/vault-cluster"
+  source = "github.com/hashicorp/terraform-aws-vault.git//modules/vault-cluster?ref=v0.13.11"
+  # source = "../../modules/vault-cluster"
 
   cluster_name  = var.vault_cluster_name
   cluster_size  = var.vault_cluster_size
@@ -31,7 +31,7 @@ module "vault_cluster" {
   # To make testing easier, we allow requests from any IP address here but in a production deployment, we *strongly*
   # recommend you limit this to the IP address ranges of known, trusted servers inside your VPC.
 
-  allowed_ssh_cidr_blocks              = ["0.0.0.0/0"]
+  allowed_ssh_cidr_blocks              = ["172.17.192.0/20", "172.19.192.0/20"]
   allowed_inbound_cidr_blocks          = ["0.0.0.0/0"]
   allowed_inbound_security_group_ids   = []
   allowed_inbound_security_group_count = 0
@@ -45,7 +45,7 @@ module "vault_cluster" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 module "consul_iam_policies_servers" {
-  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-iam-policies?ref=v0.8.0"
+  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-iam-policies?ref=v0.7.11"
 
   iam_role_id = module.vault_cluster.iam_role_id
 }
@@ -56,7 +56,7 @@ module "consul_iam_policies_servers" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 data "template_file" "user_data_vault_cluster" {
-  template = file("${path.module}/user-data-vault.sh")
+  template = file("${path.module}/data/user-data-vault.sh")
 
   vars = {
     aws_region               = data.aws_region.current.name
@@ -72,7 +72,7 @@ data "template_file" "user_data_vault_cluster" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 module "security_group_rules" {
-  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-client-security-group-rules?ref=v0.8.0"
+  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-client-security-group-rules?ref=v0.7.11"
 
   security_group_id = module.vault_cluster.security_group_id
 
@@ -87,7 +87,7 @@ module "security_group_rules" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 module "consul_cluster" {
-  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-cluster?ref=v0.8.0"
+  source = "github.com/hashicorp/terraform-aws-consul.git//modules/consul-cluster?ref=v0.7.11"
 
   cluster_name  = var.consul_cluster_name
   cluster_size  = var.consul_cluster_size
@@ -106,7 +106,7 @@ module "consul_cluster" {
   # To make testing easier, we allow Consul and SSH requests from any IP address here but in a production
   # deployment, we strongly recommend you limit this to the IP address ranges of known, trusted servers inside your VPC.
 
-  allowed_ssh_cidr_blocks     = ["0.0.0.0/0"]
+  allowed_ssh_cidr_blocks     = ["172.17.192.0/20", "172.19.192.0/20"]
   allowed_inbound_cidr_blocks = ["0.0.0.0/0"]
   ssh_key_name                = var.ssh_key_name
 }
@@ -117,7 +117,7 @@ module "consul_cluster" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 data "template_file" "user_data_consul" {
-  template = file("${path.module}/user-data-consul.sh")
+  template = file("${path.module}/data/user-data-consul.sh")
 
   vars = {
     consul_cluster_tag_key   = var.consul_cluster_tag_key
@@ -139,6 +139,7 @@ data "aws_vpc" "default" {
 
 data "aws_subnet_ids" "default" {
   vpc_id = data.aws_vpc.default.id
+  tags   = var.subnet_tags
 }
 
 data "aws_region" "current" {
